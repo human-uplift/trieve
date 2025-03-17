@@ -20,6 +20,7 @@ use crate::operators::dataset_operator::{
     get_dataset_usage_query, ChunkDeleteMessage, DeleteMessage,
 };
 use crate::operators::message_operator::get_text_from_audio;
+use crate::operators::model_operator::count_message_tokens;
 use crate::operators::parse_operator::convert_html_to_text;
 use crate::operators::qdrant_operator::{
     point_ids_exists_in_qdrant, recommend_qdrant_query, scroll_dataset_points,
@@ -2739,7 +2740,7 @@ pub async fn generate_off_chunks(
     let parameters = ChatCompletionParameters {
         model: chosen_model,
         stream: stream_response,
-        messages,
+        messages: messages.clone(),
         top_p: None,
         n: None,
         temperature: Some(data.temperature.unwrap_or(0.5)),
@@ -2830,6 +2831,7 @@ pub async fn generate_off_chunks(
             };
 
             let clickhouse_rag_event = RagQueryEventClickhouse {
+                tokens: count_message_tokens(messages),
                 id: query_id,
                 created_at: time::OffsetDateTime::now_utc(),
                 dataset_id: dataset_org_plan_sub.dataset.id,
@@ -2943,6 +2945,7 @@ pub async fn generate_off_chunks(
                 user_id,
                 hallucination_score: score.total_score,
                 detected_hallucinations: score.detected_hallucinations,
+                tokens: count_message_tokens(messages),
             };
 
             event_queue
