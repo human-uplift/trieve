@@ -1,6 +1,7 @@
 #![allow(clippy::extra_unused_lifetimes)]
 
 use super::schema::*;
+use crate::handlers::file_handler::Pdf2MdOptions;
 use crate::errors::ServiceError;
 use crate::get_env;
 use crate::handlers::analytics_handler::CTRDataRequestBody;
@@ -2163,6 +2164,7 @@ pub struct WorkerEventClickhouse {
     pub id: uuid::Uuid,
     #[serde(with = "clickhouse::serde::uuid")]
     pub dataset_id: uuid::Uuid,
+    pub organization_id: Option<uuid::Uuid>,
     pub event_type: String,
     pub event_data: String,
     #[serde(with = "clickhouse::serde::time::datetime")]
@@ -2182,6 +2184,7 @@ pub struct WorkerEvent {
     pub id: uuid::Uuid,
     pub created_at: String,
     pub dataset_id: uuid::Uuid,
+    pub organization_id: Option<uuid::Uuid>,
     pub event_type: String,
     pub event_data: String,
 }
@@ -2192,6 +2195,7 @@ impl From<WorkerEventClickhouse> for WorkerEvent {
             id: uuid::Uuid::from_bytes(*clickhouse_event.id.as_bytes()),
             created_at: clickhouse_event.created_at.to_string(),
             dataset_id: uuid::Uuid::from_bytes(*clickhouse_event.dataset_id.as_bytes()),
+            organization_id: clickhouse_event.organization_id,
             event_type: clickhouse_event.event_type,
             event_data: clickhouse_event.event_data,
         }
@@ -2204,6 +2208,7 @@ impl From<WorkerEvent> for WorkerEventClickhouse {
             id: event.id,
             created_at: OffsetDateTime::now_utc(),
             dataset_id: event.dataset_id,
+            organization_id: event.organization_id,
             event_type: event.event_type,
             event_data: event.event_data,
         }
@@ -2217,6 +2222,7 @@ pub enum EventType {
     FileUploaded {
         file_id: uuid::Uuid,
         file_name: String,
+        pdf2md_options: Option<Pdf2MdOptions>,
     },
     #[display(fmt = "file_upload_failed")]
     FileUploadFailed { file_id: uuid::Uuid, error: String },
@@ -2325,11 +2331,12 @@ impl EventType {
 }
 
 impl WorkerEvent {
-    pub fn from_details(dataset_id: uuid::Uuid, event_type: EventType) -> Self {
+    pub fn from_details(dataset_id: uuid::Uuid, organization_id: Option<uuid::Uuid>, event_type: EventType) -> Self {
         WorkerEvent {
             id: uuid::Uuid::new_v4(),
             created_at: chrono::Utc::now().naive_local().to_string(),
             dataset_id,
+            organization_id,
             event_type: event_type.to_string(),
             event_data: serde_json::to_value(event_type).unwrap().to_string(),
         }
@@ -4674,6 +4681,7 @@ impl From<RetrievedPoint> for QdrantPayload {
 pub struct FileWorkerMessage {
     pub file_id: uuid::Uuid,
     pub dataset_id: uuid::Uuid,
+    pub organization_id: uuid::Uuid,
     pub upload_file_data: UploadFileReqPayload,
     pub attempt_number: u8,
 }
