@@ -1334,6 +1334,7 @@ pub async fn search_chunks(
         let clickhouse_event = SearchQueryEventClickhouse {
             id: search_id,
             search_type: String::from("search"),
+            tokens: count_tokens(&query),
             query: query.clone(),
             request_params: serde_json::to_string(&data.clone()).unwrap_or_default(),
             latency: get_latency_from_header(timer.header_value()),
@@ -1560,6 +1561,7 @@ pub async fn autocomplete(
         let clickhouse_event = SearchQueryEventClickhouse {
             id: search_id,
             search_type: String::from("autocomplete"),
+            tokens: count_tokens(&parsed_query.query),
             query: parsed_query.query.clone(),
             request_params: serde_json::to_string(&data.clone()).unwrap_or_default(),
             latency: get_latency_from_header(timer.header_value()),

@@ -2,7 +2,7 @@ use super::{
     auth_handler::{AdminOnly, LoggedUser},
     chunk_handler::{is_audio, ChunkFilter, SearchChunksReqPayload},
 };
-use crate::operators::chunk_operator::get_metadata_from_tracking_ids_query;
+use crate::operators::{chunk_operator::get_metadata_from_tracking_ids_query, model_operator::count_tokens};
 use crate::{
     data::models::{
         escape_quotes, ChunkGroup, ChunkGroupAndFileId, ChunkGroupBookmark, ChunkMetadata,
@@ -1742,6 +1742,7 @@ pub async fn search_within_group(
         let clickhouse_event = SearchQueryEventClickhouse {
             id: search_id,
             search_type: String::from("search_within_groups"),
+            tokens: count_tokens(&query),
             query: query.clone(),
             request_params: serde_json::to_string(&data.clone()).unwrap_or_default(),
             latency: get_latency_from_header(timer.header_value()),
@@ -1944,6 +1945,7 @@ pub async fn search_over_groups(
         let clickhouse_event = SearchQueryEventClickhouse {
             id: search_id,
             search_type: String::from("search_over_groups"),
+            tokens: count_tokens(&query),
             query: query.clone(),
             request_params: serde_json::to_string(&data.clone()).unwrap_or_default(),
             latency: get_latency_from_header(timer.header_value()),

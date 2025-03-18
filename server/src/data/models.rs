@@ -5391,6 +5391,7 @@ pub struct SearchQueryEventClickhouse {
     pub metadata: String,
     pub query_rating: String,
     pub user_id: String,
+    pub tokens: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -6554,12 +6555,14 @@ impl EventTypes {
                 query_rating,
                 user_id,
                 metadata,
+                tokens,
             } => EventDataTypes::SearchQueryEventClickhouse(SearchQueryEventClickhouse {
                 id: uuid::Uuid::new_v4(),
                 search_type: search_type
                     .unwrap_or(ClickhouseSearchTypes::Search)
                     .to_string(),
                 query,
+                tokens,
                 request_params: serde_json::to_string(&request_params).unwrap_or_default(),
                 metadata: serde_json::to_string(&metadata).unwrap_or("".to_string()),
                 latency: latency.unwrap_or(0.0),
@@ -7760,6 +7763,8 @@ pub enum EventTypes {
         metadata: Option<serde_json::Value>,
         /// The user id of the user who made the search
         user_id: Option<String>,
+        /// Number of tokens used in the search
+        tokens: u64
     },
     #[display(fmt = "rag")]
     #[serde(rename = "rag")]
