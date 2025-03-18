@@ -11,6 +11,7 @@ use crate::{
 };
 use actix_web::{web, HttpRequest};
 use chrono::NaiveDateTime;
+use clickhouse::Row;
 use dateparser::DateTimeUtc;
 use diesel::{
     prelude::*, result::DatabaseErrorKind, sql_query, ExpressionMethods, JoinOnDsl,
@@ -20,6 +21,7 @@ use diesel_async::RunQueryDsl;
 use itertools::Itertools;
 use rand::{distributions::Alphanumeric, Rng};
 use redis::AsyncCommands;
+use serde::Deserialize;
 
 /// Creates a dataset from Name if it doesn't conflict. If it does, then it creates a random name
 /// for the user
@@ -441,31 +443,74 @@ pub async fn get_org_usage_by_id_query(
     Ok(org_usage_count)
 }
 
+#[derive(Row, Deserialize)]
+pub struct SearchTokensRow {
+    search_tokens: u64,
+    search_count: u64,
+}
+
+#[derive(Row, Deserialize)]
+pub struct MessageTokensRow {
+    message_tokens: u64,
+    message_count: u64,
+}
+
+#[derive(Row, Deserialize)]
+pub struct IngestedTokensRow {
+    bytes_ingested: u64,
+    tokens_ingested: u64,
+}
+
 pub async fn get_extended_org_usage_by_id_query(
     organization_id: uuid::Uuid,
     clickhouse_client: &clickhouse::Client,
-    start_date: chrono::NaiveDate,
-    end_date: chrono::NaiveDate,
+    // start_date: chrono::NaiveDate,
+    // end_date: chrono::NaiveDate,
     pool: web::Data<Pool>,
 ) -> Result<ExtendedOrganizationUsageCount, ServiceError> {
     let usage = get_org_usage_by_id_query(organization_id, pool).await?;
 
-    let query_string = "
-        SELECT SUM(tokens),
-        FROM rag_queries
+    let search_tokens = clickhouse_client
+        .query(
+            "
+        SELECT SUM(tokens) as search_tokens, COUNT(*) as search_count
+        FROM search_queries
         WHERE organization_id = ?
-        and created_at >= ? and created_at <= ?
-        ";
-    let clickhouse_queries = clickhouse_client
-        .query(query_string.as_str())
+        ",
+        )
         .bind(organization_id)
-        .bind(start_date)
-        .bind(end_date)
-        .fetch_all::<SearchQueryEventClickhouse>()
+        .fetch_one::<SearchTokensRow>()
         .await
         .map_err(|e| {
-            log::error!("Error fetching queries: {:?}", e);
-            ServiceError::InternalServerError("Error fetching queries".to_string())
+            ServiceError::InternalServerError(format!("Error fetching search queries {:?}", e))
+        })?;
+
+    let message_tokens = clickhouse_client
+        .query(
+            "
+        SELECT SUM(tokens) as message_tokens, COUNT(*) as message_count
+        FROM rag_queries
+        WHERE organization_id = ?
+        ",
+        )
+        .bind(organization_id)
+        .fetch_one::<MessageTokensRow>()
+        .await
+        .map_err(|e| {
+            ServiceError::InternalServerError(format!("Error fetching message queries {:?}", e))
+        })?;
+
+    let bytes_and_tokens_ingested = clickhouse_client.query( "
+        SELECT SUM(JSONExtractUInt(event_data, 'bytes_ingested')) as bytes_ingested,
+               SUM(JSONExtractUInt(event_data, 'tokens_ingested')) as tokens_ingested
+        FROM dataset_events
+        WHERE event_type  = 'chunks_uploaded' and organization_id = ?"
+        )
+        .bind(organization_id)
+        .fetch_one::<IngestedTokensRow>()
+        .await
+        .map_err(|e| {
+            ServiceError::InternalServerError(format!("Error fetching ingestion data {:?}", e))
         })?;
 
     Ok(ExtendedOrganizationUsageCount {
@@ -473,11 +518,12 @@ pub async fn get_extended_org_usage_by_id_query(
         user_count: usage.user_count,
         chunk_count: usage.chunk_count,
         file_storage: usage.file_storage,
-        search_tokens: 1,
-        message_tokens: 1,
-        bytes_ingested: 1,
-        tokens_ingested: 1,
-        message_count: 1,
+        search_tokens: search_tokens.search_tokens,
+        message_tokens: message_tokens.message_tokens,
+        bytes_ingested: bytes_and_tokens_ingested.bytes_ingested,
+        tokens_ingested: bytes_and_tokens_ingested.tokens_ingested,
+        message_count: message_tokens.message_count,
+        search_count: search_tokens.search_count,
         ocr_pages_ingested: 1,
         website_pages_scraped: 1,
         events_ingested: 1,

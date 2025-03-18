@@ -2,8 +2,8 @@ use super::auth_handler::{AdminOnly, LoggedUser, OwnerOnly};
 use crate::operators::organization_operator::get_extended_org_usage_by_id_query;
 use crate::{
     data::models::{
-        ApiKeyRequestParams, OrganizationWithSubAndPlan, Pool, RedisPool,
-        UserOrganization, UserRole,
+        ApiKeyRequestParams, OrganizationWithSubAndPlan, Pool, RedisPool, UserOrganization,
+        UserRole,
     },
     errors::ServiceError,
     middleware::auth_middleware::{get_role_for_org, verify_admin, verify_owner},
@@ -259,9 +259,10 @@ pub struct ExtendedOrganizationUsageCount {
     pub dataset_count: i32,
     pub user_count: i32,
     pub file_storage: i64,
-    pub message_count: i32,
+    pub message_count: u64,
+    pub search_count: u64,
     pub chunk_count: i32,
-    pub bytes_ingested: u64, // For dataset size
+    pub bytes_ingested: u64,  // For dataset size
     pub tokens_ingested: u64, // For ingest charge
     pub ocr_pages_ingested: u64,
     // website pages scraped
@@ -301,7 +302,8 @@ pub async fn get_extended_organization_usage(
     };
 
     let org_id = organization.into_inner();
-    let extended_usage = get_extended_org_usage_by_id_query(org_id, clickhouse_client.get_ref(), pool).await?;
+    let extended_usage =
+        get_extended_org_usage_by_id_query(org_id, clickhouse_client.get_ref(), pool).await?;
 
     Ok(HttpResponse::Ok().json(extended_usage))
 }

@@ -1473,6 +1473,7 @@ pub async fn get_recommended_groups(
                 .map(|x| serde_json::to_string(x).unwrap_or_default())
                 .collect(),
             dataset_id: dataset_org_plan_sub.dataset.id,
+            organization_id: dataset_org_plan_sub.dataset.organization_id,
             created_at: time::OffsetDateTime::now_utc(),
             user_id: data.user_id.clone().unwrap_or_default(),
         };
@@ -1763,6 +1764,7 @@ pub async fn search_within_group(
                 .collect(),
             metadata: serde_json::to_string(&data.metadata.clone()).unwrap_or_default(),
             dataset_id: dataset_org_plan_sub.dataset.id,
+            organization_id: dataset_org_plan_sub.dataset.organization_id,
             created_at: time::OffsetDateTime::now_utc(),
             query_rating: String::from(""),
             user_id: data.user_id.clone().unwrap_or_default(),
@@ -1966,6 +1968,7 @@ pub async fn search_over_groups(
                 .collect(),
             metadata: serde_json::to_string(&data.metadata.clone()).unwrap_or_default(),
             dataset_id: dataset_org_plan_sub.dataset.id,
+            organization_id: dataset_org_plan_sub.dataset.organization_id,
             created_at: time::OffsetDateTime::now_utc(),
             query_rating: String::from(""),
             user_id: data.user_id.clone().unwrap_or_default(),

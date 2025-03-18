@@ -2164,6 +2164,7 @@ pub struct WorkerEventClickhouse {
     pub id: uuid::Uuid,
     #[serde(with = "clickhouse::serde::uuid")]
     pub dataset_id: uuid::Uuid,
+    #[serde(with = "clickhouse::serde::uuid::option")]
     pub organization_id: Option<uuid::Uuid>,
     pub event_type: String,
     pub event_data: String,
@@ -5386,6 +5387,8 @@ pub struct SearchQueryEventClickhouse {
     pub results: Vec<String>,
     #[serde(with = "clickhouse::serde::uuid")]
     pub dataset_id: uuid::Uuid,
+    #[serde(with = "clickhouse::serde::uuid")]
+    pub organization_id: uuid::Uuid,
     #[serde(with = "clickhouse::serde::time::datetime")]
     pub created_at: OffsetDateTime,
     pub metadata: String,
@@ -5647,6 +5650,8 @@ pub struct RecommendationEventClickhouse {
     pub created_at: OffsetDateTime,
     pub metadata: String,
     pub user_id: String,
+    #[serde(with = "clickhouse::serde::uuid")]
+    pub organization_id: uuid::Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Display, Clone, Default)]
@@ -6573,6 +6578,7 @@ impl EventTypes {
                     .map(|r| r.to_string())
                     .collect(),
                 dataset_id,
+                organization_id,
                 created_at: OffsetDateTime::now_utc(),
                 query_rating: serde_json::to_string(&query_rating).unwrap_or("".to_string()),
                 user_id: user_id.unwrap_or_default(),
@@ -6653,6 +6659,7 @@ impl EventTypes {
                 dataset_id,
                 created_at: OffsetDateTime::now_utc(),
                 user_id: user_id.unwrap_or_default(),
+                organization_id,
             }),
         }
     }

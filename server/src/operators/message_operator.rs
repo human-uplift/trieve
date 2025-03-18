@@ -518,6 +518,7 @@ pub async fn get_rag_chunks_query(
             tokens: count_tokens(&query),
             query: query.clone(),
             dataset_id: dataset.id,
+            organization_id: dataset.organization_id,
             metadata: serde_json::to_string(&create_message_req_payload.metadata.clone())
                 .unwrap_or_default(),
             top_score: result_groups
@@ -623,6 +624,7 @@ pub async fn get_rag_chunks_query(
             tokens: count_tokens(&query),
             query: query.clone(),
             dataset_id: dataset.id,
+            organization_id: dataset.organization_id,
             top_score: result_chunks
                 .score_chunks
                 .get(0)
