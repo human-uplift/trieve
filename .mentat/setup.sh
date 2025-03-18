@@ -11,18 +11,65 @@ mkdir -p server/tmp
 
 # Setup environment files if they don't exist (essential)
 echo "Setting up environment files..."
-for env_file in .env.analytics .env.chat .env.dashboard .env.server .env.search; do
-  if [ -f "$env_file" ]; then
-    dest_file="${env_file/.env./}"
-    if [[ "$dest_file" == "server" ]]; then
-      dest_file="server/.env"
-    else
-      dest_file="frontends/${dest_file}/.env"
-    fi
+
+# Validate frontend directories based on what actually exists
+VALID_FRONTENDS=()
+for dir in frontends/*/; do
+  if [ -d "$dir" ]; then
+    frontend=$(basename "$dir")
+    VALID_FRONTENDS+=("$frontend")
+  fi
+done
+
+echo "Found frontend directories: ${VALID_FRONTENDS[*]}"
+
+# Process .env files
+for env_file in .env.*; do
+  # Skip if file doesn't exist or isn't a regular file
+  [ ! -f "$env_file" ] && continue
+  
+  # Extract the part after .env.
+  name="${env_file#.env.}"
+  
+  if [ "$name" = "server" ]; then
+    # Handle server env file
+    dest_dir="server"
+    dest_file="$dest_dir/.env"
     
-    if [[ ! -f "$dest_file" ]]; then
+    # Ensure directory exists
+    mkdir -p "$dest_dir"
+    
+    if [ ! -f "$dest_file" ]; then
       echo "Copying $env_file to $dest_file"
-      cp "$env_file" "$dest_file"
+      cp "$env_file" "$dest_file" || echo "Failed to copy $env_file to $dest_file"
+    fi
+  elif [ "$name" = "docker-compose" ] || [ "$name" = "example" ]; then
+    # Skip docker-compose and example env files
+    echo "Skipping $env_file (not for direct use)"
+    continue
+  else
+    # Check if this is a valid frontend directory
+    is_valid=false
+    for frontend in "${VALID_FRONTENDS[@]}"; do
+      if [ "$name" = "$frontend" ]; then
+        is_valid=true
+        break
+      fi
+    done
+    
+    if [ "$is_valid" = true ]; then
+      dest_dir="frontends/$name"
+      dest_file="$dest_dir/.env"
+      
+      # Ensure directory exists
+      mkdir -p "$dest_dir"
+      
+      if [ ! -f "$dest_file" ]; then
+        echo "Copying $env_file to $dest_file"
+        cp "$env_file" "$dest_file" || echo "Failed to copy $env_file to $dest_file"
+      fi
+    else
+      echo "Skipping $env_file (no matching frontend directory found)"
     fi
   fi
 done
@@ -99,15 +146,6 @@ echo "- Install cargo-watch: cargo install cargo-watch"
 echo "- Install Node.js dependencies: yarn install"
 echo "==== END NOTICE ===="
 echo ""
-
-# Skip yarn install in CI to avoid timeout
-if [ -z "$CI" ] && command -v yarn &> /dev/null; then
-  echo "This appears to be a local environment. Installing frontend dependencies (may take a few minutes)..."
-  # This takes too long for CI, but useful for local dev
-  yarn install || echo "Yarn install failed or timed out. Run it manually if needed."
-else
-  echo "Skipping yarn install to avoid timeout. Run it manually as needed."
-fi
 
 echo "Basic setup completed successfully!"
 echo "Note: For full development environment setup, please refer to the README.md"
