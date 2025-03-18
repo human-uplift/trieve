@@ -5,7 +5,7 @@ use crate::{
         StripeSubscription, User, UserApiKey, UserOrganization,
     },
     errors::ServiceError,
-    handlers::organization_handler::CreateApiKeyReqPayload,
+    handlers::organization_handler::{CreateApiKeyReqPayload, ExtendedOrganizationUsageCount},
     operators::dataset_operator::soft_delete_dataset_by_id_query,
     randutil,
 };
@@ -439,6 +439,49 @@ pub async fn get_org_usage_by_id_query(
             })?;
 
     Ok(org_usage_count)
+}
+
+pub async fn get_extended_org_usage_by_id_query(
+    organization_id: uuid::Uuid,
+    clickhouse_client: &clickhouse::Client,
+    start_date: chrono::NaiveDate,
+    end_date: chrono::NaiveDate,
+    pool: web::Data<Pool>,
+) -> Result<ExtendedOrganizationUsageCount, ServiceError> {
+    let usage = get_org_usage_by_id_query(organization_id, pool).await?;
+
+    let query_string = "
+        SELECT SUM(tokens),
+        FROM rag_queries
+        WHERE organization_id = ?
+        and created_at >= ? and created_at <= ?
+        ";
+    let clickhouse_queries = clickhouse_client
+        .query(query_string.as_str())
+        .bind(organization_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_all::<SearchQueryEventClickhouse>()
+        .await
+        .map_err(|e| {
+            log::error!("Error fetching queries: {:?}", e);
+            ServiceError::InternalServerError("Error fetching queries".to_string())
+        })?;
+
+    Ok(ExtendedOrganizationUsageCount {
+        dataset_count: usage.dataset_count,
+        user_count: usage.user_count,
+        chunk_count: usage.chunk_count,
+        file_storage: usage.file_storage,
+        search_tokens: 1,
+        message_tokens: 1,
+        bytes_ingested: 1,
+        tokens_ingested: 1,
+        message_count: 1,
+        ocr_pages_ingested: 1,
+        website_pages_scraped: 1,
+        events_ingested: 1,
+    })
 }
 
 pub async fn get_org_users_by_id_query(

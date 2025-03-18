@@ -239,6 +239,7 @@ impl Modify for SecurityAddon {
         handlers::organization_handler::update_organization,
         handlers::organization_handler::delete_organization,
         handlers::organization_handler::get_organization_usage,
+        handlers::organization_handler::get_extended_organization_usage,
         handlers::organization_handler::get_organization_users,
         handlers::organization_handler::update_all_org_dataset_configs,
         handlers::dataset_handler::create_dataset,
@@ -369,6 +370,7 @@ impl Modify for SecurityAddon {
             handlers::user_handler::UpdateUserOrgRoleReqPayload,
             handlers::organization_handler::CreateApiKeyReqPayload,
             handlers::organization_handler::CreateApiKeyResponse,
+            handlers::organization_handler::ExtendedOrganizationUsageCount,
             operators::group_operator::GroupsForChunk,
             handlers::file_handler::UploadFileReqPayload,
             handlers::file_handler::UploadFileResponseBody,
@@ -1242,6 +1244,12 @@ pub fn main() -> std::io::Result<()> {
                                     web::resource("/usage/{organization_id}")
                                         .route(web::get().to(
                                             handlers::organization_handler::get_organization_usage,
+                                        )),
+                                )
+                                .service(
+                                    web::resource("/usage/v2/{organization_id}")
+                                        .route(web::get().to(
+                                            handlers::organization_handler::get_extended_organization_usage,
                                         )),
                                 )
                                 .service(

@@ -1,8 +1,9 @@
 use super::auth_handler::{AdminOnly, LoggedUser, OwnerOnly};
+use crate::operators::organization_operator::get_extended_org_usage_by_id_query;
 use crate::{
     data::models::{
-        ApiKeyRequestParams, OrganizationWithSubAndPlan, Pool, RedisPool, UserOrganization,
-        UserRole,
+        ApiKeyRequestParams, OrganizationWithSubAndPlan, Pool, RedisPool,
+        UserOrganization, UserRole,
     },
     errors::ServiceError,
     middleware::auth_middleware::{get_role_for_org, verify_admin, verify_owner},
@@ -249,6 +250,60 @@ pub async fn get_organization_usage(
     let usage = get_org_usage_by_id_query(org_id, pool).await?;
 
     Ok(HttpResponse::Ok().json(usage))
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct ExtendedOrganizationUsageCount {
+    pub search_tokens: u64,
+    pub message_tokens: u64,
+    pub dataset_count: i32,
+    pub user_count: i32,
+    pub file_storage: i64,
+    pub message_count: i32,
+    pub chunk_count: i32,
+    pub bytes_ingested: u64, // For dataset size
+    pub tokens_ingested: u64, // For ingest charge
+    pub ocr_pages_ingested: u64,
+    // website pages scraped
+    pub website_pages_scraped: u64,
+    pub events_ingested: u64,
+}
+
+/// Get Extended Organization Usage
+///
+/// Fetch the current usage specification of an organization by its id. Auth'ed user or api key must have an admin or owner role for the specified dataset's organization.
+#[utoipa::path(
+    get,
+    path = "/organization/usage/v2/{organization_id}",
+    context_path = "/api",
+    tag = "Organization",
+    responses(
+        (status = 200, description = "The current usage of the specified organization", body = ExtendedOrganizationUsageCount),
+        (status = 400, description = "Service error relating to finding the organization's usage by id", body = ErrorResponseBody),
+    ),
+    params(
+        ("TR-Organization" = uuid::Uuid, Header, description = "The organization id to use for the request"),
+        ("organization_id" = Option<uuid::Uuid>, Path, description = "The id of the organization you want to fetch the usage of."),
+    ),
+    security(
+        ("ApiKey" = ["admin"]),
+    )
+)]
+pub async fn get_extended_organization_usage(
+    organization: web::Path<uuid::Uuid>,
+    pool: web::Data<Pool>,
+    clickhouse_client: web::Data<clickhouse::Client>,
+    user: AdminOnly,
+) -> Result<HttpResponse, actix_web::Error> {
+    // TODO also add a date range
+    if !verify_admin(&user, &organization) {
+        return Ok(HttpResponse::Forbidden().finish());
+    };
+
+    let org_id = organization.into_inner();
+    let extended_usage = get_extended_org_usage_by_id_query(org_id, clickhouse_client.get_ref(), pool).await?;
+
+    Ok(HttpResponse::Ok().json(extended_usage))
 }
 
 /// Get Organization Users
