@@ -41,7 +41,8 @@ export const NavbarLayout = (props: NavbarLayoutProps) => {
             <NavbarOrgWidget />
           </div>
         </div>
-        <div class="flex grow flex-col bg-neutral-100">{props.children}</div>
+        {/* Added pb-16 class to add bottom padding and prevent "Get help" button from overlapping UI elements */}
+        <div class="flex grow flex-col bg-neutral-100 pb-16">{props.children}</div>
       </div>
     </>
   );
