@@ -41,7 +41,7 @@ export const NavbarLayout = (props: NavbarLayoutProps) => {
             <NavbarOrgWidget />
           </div>
         </div>
-        <div class="mb-16 flex grow flex-col bg-neutral-100">
+        <div class="flex grow flex-col bg-neutral-100" style={{"margin-bottom": "4rem"}}>
           {props.children}
         </div>
       </div>
