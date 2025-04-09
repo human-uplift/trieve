@@ -41,10 +41,12 @@ export const NavbarLayout = (props: NavbarLayoutProps) => {
             <NavbarOrgWidget />
           </div>
         </div>
-        <div class="flex grow flex-col bg-neutral-100" style={{"margin-bottom": "4rem"}}>
+        <div class="flex grow flex-col bg-neutral-100">
           {props.children}
         </div>
       </div>
+      {/* Fixed spacer to prevent help button from overlapping UI elements */}
+      <div class="fixed bottom-0 left-0 h-16 w-full bg-transparent pointer-events-none" />
     </>
   );
 };
