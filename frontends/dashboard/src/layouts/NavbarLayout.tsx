@@ -3,6 +3,7 @@ import { A } from "@solidjs/router";
 import { BiRegularLinkExternal } from "solid-icons/bi";
 import { NavbarOrgWidget } from "../components/NavbarOrgWidget";
 import ShowToasts from "../components/ShowToasts";
+import BottomSpacer from "../components/BottomSpacer";
 
 interface NavbarLayoutProps {
   children?: JSX.Element;
@@ -43,10 +44,9 @@ export const NavbarLayout = (props: NavbarLayoutProps) => {
         </div>
         <div class="flex grow flex-col bg-neutral-100">
           {props.children}
+          <BottomSpacer />
         </div>
       </div>
-      {/* Fixed spacer to prevent help button from overlapping UI elements */}
-      <div class="fixed bottom-0 left-0 h-16 w-full bg-transparent pointer-events-none" />
     </>
   );
 };
