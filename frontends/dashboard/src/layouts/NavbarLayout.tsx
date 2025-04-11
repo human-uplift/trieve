@@ -12,7 +12,7 @@ export const NavbarLayout = (props: NavbarLayoutProps) => {
   return (
     <>
       <ShowToasts />
-      <div class="flex h-screen min-h-screen flex-col">
+      <div class="flex h-screen min-h-screen flex-col mb-16">
         <div class="flex justify-between gap-3 border-b border-b-neutral-300 p-2 px-4 shadow-md -md:flex-col">
           <div class="flex items-center md:gap-8 -md:flex-col">
             <A href="/" class="flex items-center gap-1">
@@ -41,7 +41,9 @@ export const NavbarLayout = (props: NavbarLayoutProps) => {
             <NavbarOrgWidget />
           </div>
         </div>
-        <div class="flex grow flex-col bg-neutral-100">{props.children}</div>
+        <div class="flex grow flex-col bg-neutral-100">
+          {props.children}
+        </div>
       </div>
     </>
   );
