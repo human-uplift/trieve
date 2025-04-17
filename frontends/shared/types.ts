@@ -462,6 +462,11 @@ export interface RangeFilter {
   lte?: number;
 }
 
+export interface TopComponent {
+  component_name: string;
+  interaction_count: number;
+}
+
 export interface AnalyticsFilter {
   date_range: DateRangeFilter;
   search_method?: "fulltext" | "hybrid" | "semantic";
