@@ -3,6 +3,7 @@ import { Card } from "../components/charts/Card";
 import { HeadQueries } from "../components/charts/HeadQueries";
 import { QueryCounts } from "../components/charts/QueryCounts";
 import { SearchUsageGraph } from "../components/charts/SearchUsageGraph";
+import { TopComponents } from "../components/charts/TopComponents";
 import { CTRInfoPanel } from "../components/CTRInfoPanel";
 import { DateRangeFilter } from "shared/types";
 import { createSignal } from "solid-js";
@@ -21,6 +22,10 @@ export const AnalyticsOverviewPage = () => {
 
   const [headQueriesDate, setHeadQueriesDate] = createSignal<DateRangeFilter>({
     gt: subHours(new Date(), 1),
+  });
+
+  const [topComponentsDate, setTopComponentsDate] = createSignal<DateRangeFilter>({
+    gt: subMonths(new Date(), 1),
   });
 
   return (
@@ -74,6 +79,25 @@ export const AnalyticsOverviewPage = () => {
           <HeadQueries
             params={{
               filter: { date_range: headQueriesDate() },
+            }}
+          />
+        </Card>
+
+        <Card
+          controller={
+            <DateRangePicker
+              onChange={(e) => setTopComponentsDate(e)}
+              initialSelectedPresetId={3}
+              value={topComponentsDate()}
+            />
+          }
+          title="Top Components"
+          class="px-4"
+          width={1}
+        >
+          <TopComponents
+            params={{
+              filter: { date_range: topComponentsDate() },
             }}
           />
         </Card>
