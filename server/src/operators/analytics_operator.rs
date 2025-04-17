@@ -175,26 +175,64 @@ pub async fn get_search_metrics_query(
     clickhouse_client: &clickhouse::Client,
 ) -> Result<DatasetAnalytics, ServiceError> {
     let mut query_string = String::from(
-        "SELECT 
-            count(*) as total_queries,
-            avg(latency) as avg_latency,
-            quantile(0.99)(latency) as p99,
-            quantile(0.95)(latency) as p95,
-            quantile(0.5)(latency) as p50,
-            round(100 * countIf(JSONExtract(query_rating, 'rating', 'Nullable(Float64)') >= 1) / count(*), 2) as total_positive_ratings,
-            round(100 * countIf(JSONExtract(query_rating, 'rating', 'Nullable(Float64)') <= 0) / count(*), 2) as total_negative_ratings
-        FROM search_queries
-        WHERE dataset_id = ?            
-         ",
+        "WITH 
+            unique_visitors AS (
+                SELECT 
+                    count(DISTINCT user_id) as visitor_count
+                FROM search_queries
+                WHERE dataset_id = ? AND user_id != ''
+                "
     );
-
+    
+    // Add filter conditions to the unique_visitors CTE
+    if let Some(filter_clone) = filter.clone() {
+        query_string = filter_clone.add_to_query(query_string);
+    }
+    
+    // Continue with the main query
+    query_string.push_str(
+        "),
+        search_metrics AS (
+            SELECT 
+                count(*) as total_queries,
+                avg(latency) as avg_latency,
+                quantile(0.99)(latency) as p99,
+                quantile(0.95)(latency) as p95,
+                quantile(0.5)(latency) as p50,
+                round(100 * countIf(JSONExtract(query_rating, 'rating', 'Nullable(Float64)') >= 1) / count(*), 2) as total_positive_ratings,
+                round(100 * countIf(JSONExtract(query_rating, 'rating', 'Nullable(Float64)') <= 0) / count(*), 2) as total_negative_ratings
+            FROM search_queries
+            WHERE dataset_id = ?
+            "
+    );
+    
+    // Add filter conditions to the search_metrics
     if let Some(filter) = filter {
         query_string = filter.add_to_query(query_string);
     }
+    
+    // Final query with calculated avg_searches_per_visitor
+    query_string.push_str(
+        ")
+        SELECT 
+            search_metrics.total_queries,
+            search_metrics.avg_latency,
+            search_metrics.p99,
+            search_metrics.p95,
+            search_metrics.p50,
+            search_metrics.total_positive_ratings,
+            search_metrics.total_negative_ratings,
+            IF(unique_visitors.visitor_count > 0, 
+               search_metrics.total_queries / unique_visitors.visitor_count, 
+               0) as avg_searches_per_visitor
+        FROM search_metrics, unique_visitors
+        "
+    );
 
     let clickhouse_query = clickhouse_client
         .query(query_string.as_str())
         .bind(dataset_id)
+        .bind(dataset_id) // Bind dataset_id twice for the two WHERE clauses
         .fetch_one::<DatasetAnalytics>()
         .await
         .map_err(|e| {
@@ -866,7 +904,7 @@ pub async fn get_rag_usage_graph_query(
 
     let mut query_string = format!(
         "SELECT 
-	        CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
+                CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
             count(*) AS requests
         FROM 
             rag_queries
@@ -1965,7 +2003,7 @@ pub async fn get_topics_over_time_query(
 
     let mut query_string = format!(
         "SELECT 
-	        CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
+                CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
             count(*) AS requests
         FROM 
             topics

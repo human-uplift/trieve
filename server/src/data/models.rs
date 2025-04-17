@@ -6310,6 +6310,8 @@ pub struct DatasetAnalytics {
     pub total_positive_ratings: f64,
     /// Total number of searches with a negative rating
     pub total_negative_ratings: f64,
+    /// Average number of searches per unique visitor
+    pub avg_searches_per_visitor: f64,
 }
 
 #[derive(Debug, ToSchema, Row, Serialize, Deserialize)]

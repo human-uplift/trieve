@@ -684,6 +684,7 @@ export interface SearchMetricsResponse {
   p50: number;
   percent_thumbs_up: number;
   percent_thumbs_down: number;
+  avg_searches_per_visitor: number;
 }
 
 export interface RagQueryRatingResponse {
