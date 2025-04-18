@@ -840,7 +840,7 @@ pub async fn get_rag_usage_graph_query(
 
     let mut query_string = format!(
         "SELECT 
-	        CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
+                CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
             count(*) AS requests
         FROM 
             rag_queries
@@ -1715,7 +1715,7 @@ pub async fn get_topics_over_time_query(
 
     let mut query_string = format!(
         "SELECT 
-	        CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
+                CAST(toStartOfInterval(created_at, INTERVAL {}) AS DateTime) AS time_stamp,
             count(*) AS requests
         FROM 
             topics
@@ -1853,4 +1853,47 @@ pub async fn get_top_pages_query(
         })?;
 
     Ok(TopPagesResponse { top_pages })
+}
+
+pub async fn get_top_components_query(
+    dataset_id: uuid::Uuid,
+    page: Option<u32>,
+    filter: Option<ComponentAnalyticsFilter>,
+    clickhouse_client: &clickhouse::Client,
+) -> Result<TopComponentsResponse, ServiceError> {
+    let mut query_string = String::from(
+        "SELECT 
+            JSONExtractString(metadata, 'component_name') as component_name,
+            count(*) as count
+        FROM events
+        WHERE dataset_id = ? 
+          AND JSONHas(metadata, 'component_name') = 1",
+    );
+
+    if let Some(filter_params) = &filter {
+        query_string = filter_params.add_to_query(query_string);
+    }
+
+    query_string.push_str(
+        "
+        GROUP BY 
+            component_name
+        ORDER BY 
+            count DESC
+        LIMIT 10
+        OFFSET ?",
+    );
+
+    let top_components = clickhouse_client
+        .query(query_string.as_str())
+        .bind(dataset_id)
+        .bind((page.unwrap_or(1) - 1) * 10)
+        .fetch_all::<TopComponent>()
+        .await
+        .map_err(|e| {
+            log::error!("Error fetching top components: {:?}", e);
+            ServiceError::InternalServerError("Error fetching top components".to_string())
+        })?;
+
+    Ok(TopComponentsResponse { top_components })
 }
